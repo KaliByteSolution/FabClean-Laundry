@@ -138,9 +138,9 @@ const Dashboard = ({ setOrdersFilter, setRevenueFilter }) => {
 
         const totalCustomers = customerSnapshot.size;
         
-        // ✅ Calculate pending orders
-        const pendingOrders = orders.filter(order =>
-          !order.status || order.status.toLowerCase() === 'pending'
+        // ✅ Calculate in-progress orders
+        const inProgressOrders = orders.filter(order =>
+          order.status && order.status.toLowerCase() === 'in-progress'
         ).length;
 
         const calculatePercentageChange = (current, previous) => {
@@ -154,9 +154,9 @@ const Dashboard = ({ setOrdersFilter, setRevenueFilter }) => {
           navigate('/orders');
         };
 
-        // ✅ Function to navigate to pending orders
-        const handlePendingOrdersClick = () => {
-          if (setOrdersFilter) setOrdersFilter('pending');
+        // ✅ Function to navigate to in-progress orders
+        const handleInProgressOrdersClick = () => {
+          if (setOrdersFilter) setOrdersFilter('in-progress');
           navigate('/orders');
         };
 
@@ -168,7 +168,7 @@ const Dashboard = ({ setOrdersFilter, setRevenueFilter }) => {
         // ✅ Calculate urgent orders count
         const urgentOrders = orders.filter(order => 
           order.urgentDelivery === true && 
-          (!order.status || order.status.toLowerCase() === 'pending')
+          order.status && order.status.toLowerCase() === 'in-progress'
         ).length;
 
         // ✅ Updated stats with clickable cards
@@ -184,14 +184,14 @@ const Dashboard = ({ setOrdersFilter, setRevenueFilter }) => {
             onClick: handleTotalOrdersClick
           },
           {
-            title: 'Pending Orders',
-            value: pendingOrders,
+            title: 'In-Progress Orders',
+            value: inProgressOrders,
             change: urgentOrders > 0 ? `${urgentOrders} urgent orders` : 'No urgent orders',
             changeColor: urgentOrders > 0 ? 'var(--red-600)' : 'var(--green-600)',
-            icon: '⏳',
+            icon: '🔄',
             bgColor: 'var(--yellow-100)',
             clickable: true,
-            onClick: handlePendingOrdersClick
+            onClick: handleInProgressOrdersClick
           },
           {
             title: 'Revenue (Completed)',
@@ -213,26 +213,22 @@ const Dashboard = ({ setOrdersFilter, setRevenueFilter }) => {
             id: `#${order.id}`,
             customer: order.customerName || 'N/A',
             service: order.serviceType || 'N/A',
-            status: order.status || 'Pending',
+            status: order.status || 'In-Progress',
             urgent: order.urgentDelivery || false,
             statusColor: 
-              !order.status || order.status.toLowerCase() === 'pending' 
-                ? 'var(--yellow-100)' 
-                : order.status.toLowerCase() === 'in-progress'
+              order.status?.toLowerCase() === 'in-progress'
                 ? 'var(--blue-100)'
-                : order.status.toLowerCase() === 'ready'
+                : order.status?.toLowerCase() === 'ready'
                 ? 'var(--green-100)'
-                : order.status.toLowerCase() === 'completed'
+                : order.status?.toLowerCase() === 'completed'
                 ? 'var(--gray-100)'
                 : 'var(--red-100)',
             textColor: 
-              !order.status || order.status.toLowerCase() === 'pending' 
-                ? 'var(--yellow-600)' 
-                : order.status.toLowerCase() === 'in-progress'
+              order.status?.toLowerCase() === 'in-progress'
                 ? 'var(--blue-600)'
-                : order.status.toLowerCase() === 'ready'
+                : order.status?.toLowerCase() === 'ready'
                 ? 'var(--green-600)'
-                : order.status.toLowerCase() === 'completed'
+                : order.status?.toLowerCase() === 'completed'
                 ? 'var(--gray-600)'
                 : 'var(--red-600)'
           }));
@@ -1015,7 +1011,9 @@ const Dashboard = ({ setOrdersFilter, setRevenueFilter }) => {
                     borderRadius: '9999px',
                     fontWeight: '500',
                     whiteSpace: 'nowrap'
-                  }}>{order.status}</span>
+                  }}>
+                    {order.status === 'completed' ? 'Delivered' : order.status.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  </span>
                 </div>
               ))
             ) : (

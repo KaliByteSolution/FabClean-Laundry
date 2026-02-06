@@ -111,9 +111,9 @@ const Sidebar = ({ activeSection, setShowProfile }) => {
               src={logoUrl}
               alt="Company Logo"
               style={{ 
-                width: '80%', 
-                height: '80%', 
-                objectFit: 'contain' 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover' 
               }}
               onError={(e) => {
                 e.target.style.display = 'none';

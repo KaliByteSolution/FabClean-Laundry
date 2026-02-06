@@ -11,7 +11,7 @@ const Tags = () => {
     customerName: '',
     serviceType: '',
     deliveryDate: '',
-    pickupDate:''
+    pickupDate: ''
   });
 
   const [companyInfo, setCompanyInfo] = useState({
@@ -19,6 +19,10 @@ const Tags = () => {
     mobile: ''
   });
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // NEW: State for cloth item selection
+  const [selectedClothItem, setSelectedClothItem] = useState('all');
+  const [tagGenerationType, setTagGenerationType] = useState('all'); // 'all' or 'single'
 
   useEffect(() => {
     const fetchCompanyInfo = async () => {
@@ -43,6 +47,27 @@ const Tags = () => {
   const [items, setItems] = useState({});
   const [tagPreview, setTagPreview] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const itemMapping = {
+    shirt: 'Shirt',
+    tshirt: 'T-Shirt',
+    pant: 'Pant',
+    starch: 'Starch Cloth',
+    saree: 'Saree',
+    blouse: 'Blouse',
+    panjabi: 'Panjabi Suit',
+    dhotar: 'Dhotar',
+    shalu: 'Shalu / Paithani',
+    coat: 'Coat / Blazer',
+    shervani: 'Shervani',
+    sweater: 'Sweater / Jerkin',
+    onepiece: 'One Piece Ghagara',
+    bedsheet: 'Bedsheet (Single/Double)',
+    blanket: 'Blanket / Rajai',
+    shoes: 'Shoes Washing',
+    helmet: 'Helmet Washing',
+    clothsPerKg: 'Cloths Per Kg'
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -107,6 +132,7 @@ const Tags = () => {
         });
         setItems(data.items || {});
         setTagPreview([]);
+        setSelectedClothItem('all'); // Reset cloth selection when order changes
       }
     };
 
@@ -138,17 +164,79 @@ const Tags = () => {
     ).join(' ');
   };
 
+  // Get cloth item display name
+  const getClothDisplayName = (itemKey) => {
+    return itemMapping[itemKey] || itemKey.charAt(0).toUpperCase() + itemKey.slice(1);
+  };
+
+  // Get available cloth items from the order (items with quantity > 0)
+  const getAvailableClothItems = () => {
+    return Object.entries(items)
+      .filter(([_, itemData]) => itemData.quantity > 0)
+      .map(([itemName, itemData]) => ({
+        key: itemName,
+        name: getClothDisplayName(itemName),
+        quantity: itemData.quantity
+      }));
+  };
+
   const generateTag = () => {
     const previews = [];
 
-    // Calculate total tokens
-    const totalTokens = Object.values(items).reduce((sum, itemData) => sum + (itemData.quantity || 0), 0);
+    // Determine which items to generate tags for
+    let itemsToGenerate = {};
+    
+    if (tagGenerationType === 'all' || selectedClothItem === 'all') {
+      itemsToGenerate = items;
+    } else {
+      // Only generate for selected cloth item
+      if (items[selectedClothItem]) {
+        itemsToGenerate = { [selectedClothItem]: items[selectedClothItem] };
+      }
+    }
+
+    // Calculate total tokens based on generation type
+    let totalTokens;
     let currentToken = 0;
 
-    Object.entries(items).forEach(([itemName, itemData]) => {
+    if (tagGenerationType === 'all' || selectedClothItem === 'all') {
+      // Total tokens for all items
+      totalTokens = Object.values(items).reduce((sum, itemData) => sum + (itemData.quantity || 0), 0);
+    } else {
+      // Total tokens for selected item only
+      totalTokens = items[selectedClothItem]?.quantity || 0;
+    }
+
+    // For per-item generation, we need to track the starting token number
+    let startingToken = 0;
+    if (tagGenerationType === 'single' && selectedClothItem !== 'all') {
+      // Calculate starting token for this item
+      const orderedItems = Object.keys(items);
+      for (const itemName of orderedItems) {
+        if (itemName === selectedClothItem) break;
+        startingToken += items[itemName]?.quantity || 0;
+      }
+    }
+
+    Object.entries(itemsToGenerate).forEach(([itemName, itemData]) => {
       const totalQty = itemData.quantity || 0;
       for (let i = 0; i < totalQty; i++) {
         currentToken++;
+        
+        // Calculate display token based on generation type
+        let displayToken;
+        let displayTotal;
+        
+        if (tagGenerationType === 'all' || selectedClothItem === 'all') {
+          // For all items, show absolute position
+          displayToken = startingToken + currentToken;
+          displayTotal = Object.values(items).reduce((sum, item) => sum + (item.quantity || 0), 0);
+        } else {
+          // For single item, show position within that item
+          displayToken = currentToken;
+          displayTotal = totalTokens;
+        }
+
         previews.push(
           <div 
             key={`${itemName}-${i}`} 
@@ -254,7 +342,7 @@ const Tags = () => {
                   fontSize: '0.9rem',
                   fontWeight: '700'
                 }}>
-                  {currentToken}/{totalTokens}
+                  {displayToken}/{displayTotal}
                 </span>
               </div>
 
@@ -270,7 +358,7 @@ const Tags = () => {
                 {formatDate(tagData.pickupDate)}
               </div>
 
-              {/* Garment - Centered (No Token) */}
+              {/* Garment Name - Centered */}
               <div style={{ 
                 width: '100%',
                 textAlign: 'center',
@@ -279,7 +367,7 @@ const Tags = () => {
                 color: '#333',
                 lineHeight: '1.1'
               }}>
-                Garment
+                {getClothDisplayName(itemName)}
               </div>
 
               {/* Delivery Date - Centered */}
@@ -300,27 +388,6 @@ const Tags = () => {
     });
 
     setTagPreview(previews);
-  };
-
-  const itemMapping = {
-    shirt: 'Shirt',
-    tshirt: 'T-Shirt',
-    pant: 'Pant',
-    starch: 'Starch Cloth',
-    saree: 'Saree',
-    blouse: 'Blouse',
-    panjabi: 'Panjabi Suit',
-    dhotar: 'Dhotar',
-    shalu: 'Shalu / Paithani',
-    coat: 'Coat / Blazer',
-    shervani: 'Shervani',
-    sweater: 'Sweater / Jerkin',
-    onepiece: 'One Piece Ghagara',
-    bedsheet: 'Bedsheet (Single/Double)',
-    blanket: 'Blanket / Rajai',
-    shoes: 'Shoes Washing',
-    helmet: 'Helmet Washing',
-    clothsPerKg: 'Cloths Per Kg'
   };
 
   const printTag = () => {
@@ -434,6 +501,8 @@ const Tags = () => {
     order.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const availableClothItems = getAvailableClothItems();
+
   return (
     <div style={{ maxWidth: '56rem', margin: '0 auto', padding: '1.5rem' }}>
       <div style={{
@@ -470,6 +539,8 @@ const Tags = () => {
                     type="text"
                     value={searchTerm}
                     onChange={handleOrderChange}
+                    onFocus={() => setShowDropdown(true)}
+                    autoComplete="off"
                     style={{
                       width: '100%',
                       padding: '0.5rem 1rem',
@@ -502,7 +573,7 @@ const Tags = () => {
                             backgroundColor: order.id === selectedOrderId ? 'var(--gray-100)' : 'white'
                           }}
                         >
-                          {order.id}
+                          {order.id} - {order.customerName}
                         </div>
                       ))}
                     </div>
@@ -520,7 +591,8 @@ const Tags = () => {
                     width: '100%',
                     padding: '0.5rem 1rem',
                     border: '1px solid var(--gray-300)',
-                    borderRadius: '0.5rem'
+                    borderRadius: '0.5rem',
+                    backgroundColor: '#f9fafb'
                   }}
                 />
               </div>
@@ -529,62 +601,224 @@ const Tags = () => {
                 <label style={{ fontWeight: 500 }}>Service Type</label>
                 <input
                   type="text"
-                  value={tagData.serviceType}
+                  value={getFullServiceName(tagData.serviceType)}
                   readOnly
                   style={{
                     width: '100%',
                     padding: '0.5rem 1rem',
                     border: '1px solid var(--gray-300)',
-                    borderRadius: '0.5rem'
+                    borderRadius: '0.5rem',
+                    backgroundColor: '#f9fafb'
                   }}
                 />
               </div>
 
-              <div>
-                <label style={{ fontWeight: 500 }}>PickUp Date</label>
-                <input
-                  type="date"
-                  value={tagData.pickupDate}
-                  readOnly
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 1rem',
-                    border: '1px solid var(--gray-300)',
-                    borderRadius: '0.5rem'
-                  }}
-                />
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '1rem'
+              }}>
+                <div>
+                  <label style={{ fontWeight: 500 }}>PickUp Date</label>
+                  <input
+                    type="date"
+                    value={tagData.pickupDate}
+                    readOnly
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 1rem',
+                      border: '1px solid var(--gray-300)',
+                      borderRadius: '0.5rem',
+                      backgroundColor: '#f9fafb'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 500 }}>Delivery Date</label>
+                  <input
+                    type="date"
+                    value={tagData.deliveryDate}
+                    readOnly
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 1rem',
+                      border: '1px solid var(--gray-300)',
+                      borderRadius: '0.5rem',
+                      backgroundColor: '#f9fafb'
+                    }}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label style={{ fontWeight: 500 }}>Delivery Date</label>
-                <input
-                  type="date"
-                  value={tagData.deliveryDate}
-                  readOnly
-                  style={{
-                    width: '100%',
+              {/* NEW: Tag Generation Type Selection */}
+              <div style={{
+                padding: '1rem',
+                backgroundColor: '#f0f9ff',
+                borderRadius: '0.5rem',
+                border: '1px solid #bae6fd'
+              }}>
+                <label style={{ fontWeight: 600, marginBottom: '0.75rem', display: 'block', color: '#0369a1' }}>
+                  🏷️ Tag Generation Options
+                </label>
+                
+                {/* Radio buttons for generation type */}
+                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
+                  <label style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    cursor: 'pointer',
                     padding: '0.5rem 1rem',
-                    border: '1px solid var(--gray-300)',
-                    borderRadius: '0.5rem'
-                  }}
-                />
+                    borderRadius: '0.5rem',
+                    backgroundColor: tagGenerationType === 'all' ? '#dbeafe' : 'white',
+                    border: tagGenerationType === 'all' ? '2px solid #3b82f6' : '1px solid #d1d5db'
+                  }}>
+                    <input
+                      type="radio"
+                      name="generationType"
+                      value="all"
+                      checked={tagGenerationType === 'all'}
+                      onChange={() => {
+                        setTagGenerationType('all');
+                        setSelectedClothItem('all');
+                      }}
+                      style={{ accentColor: '#3b82f6' }}
+                    />
+                    <span style={{ fontWeight: 500 }}>All Items</span>
+                  </label>
+                  
+                  <label style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.5rem',
+                    backgroundColor: tagGenerationType === 'single' ? '#dbeafe' : 'white',
+                    border: tagGenerationType === 'single' ? '2px solid #3b82f6' : '1px solid #d1d5db'
+                  }}>
+                    <input
+                      type="radio"
+                      name="generationType"
+                      value="single"
+                      checked={tagGenerationType === 'single'}
+                      onChange={() => setTagGenerationType('single')}
+                      style={{ accentColor: '#3b82f6' }}
+                    />
+                    <span style={{ fontWeight: 500 }}>Per Cloth Item</span>
+                  </label>
+                </div>
+
+                {/* Cloth item dropdown (shown only when 'single' is selected) */}
+                {tagGenerationType === 'single' && (
+                  <div>
+                    <label style={{ fontWeight: 500, marginBottom: '0.5rem', display: 'block' }}>
+                      Select Cloth Item
+                    </label>
+                    <select
+                      value={selectedClothItem}
+                      onChange={(e) => setSelectedClothItem(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 1rem',
+                        border: '1px solid var(--gray-300)',
+                        borderRadius: '0.5rem',
+                        backgroundColor: 'white',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <option value="all">-- Select a cloth item --</option>
+                      {availableClothItems.map(item => (
+                        <option key={item.key} value={item.key}>
+                          {item.name} (Qty: {item.quantity})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Items summary */}
+                {availableClothItems.length > 0 && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem',
+                    backgroundColor: 'white',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                      Order Items Summary:
+                    </p>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexWrap: 'wrap', 
+                      gap: '0.5rem' 
+                    }}>
+                      {availableClothItems.map(item => (
+                        <span 
+                          key={item.key}
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            backgroundColor: selectedClothItem === item.key ? '#3b82f6' : '#e5e7eb',
+                            color: selectedClothItem === item.key ? 'white' : '#374151',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            cursor: tagGenerationType === 'single' ? 'pointer' : 'default'
+                          }}
+                          onClick={() => {
+                            if (tagGenerationType === 'single') {
+                              setSelectedClothItem(item.key);
+                            }
+                          }}
+                        >
+                          {item.name}: {item.quantity}
+                        </span>
+                      ))}
+                    </div>
+                    <p style={{ 
+                      marginTop: '0.5rem', 
+                      fontSize: '0.875rem', 
+                      color: '#6b7280',
+                      fontWeight: 500
+                    }}>
+                      Total Tags: {
+                        tagGenerationType === 'all' || selectedClothItem === 'all'
+                          ? availableClothItems.reduce((sum, item) => sum + item.quantity, 0)
+                          : (items[selectedClothItem]?.quantity || 0)
+                      }
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button
                 onClick={generateTag}
+                disabled={availableClothItems.length === 0 || (tagGenerationType === 'single' && selectedClothItem === 'all')}
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  backgroundColor: 'var(--primary, #3b82f6)',
+                  backgroundColor: (availableClothItems.length === 0 || (tagGenerationType === 'single' && selectedClothItem === 'all')) 
+                    ? 'var(--gray-300)' 
+                    : 'var(--primary, #3b82f6)',
                   color: 'white',
                   borderRadius: '0.5rem',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: (availableClothItems.length === 0 || (tagGenerationType === 'single' && selectedClothItem === 'all')) 
+                    ? 'not-allowed' 
+                    : 'pointer',
                   fontSize: '0.875rem',
-                  marginTop: '0.5rem'
+                  marginTop: '0.5rem',
+                  fontWeight: 600
                 }}
               >
-                Generate Tag
+                {tagGenerationType === 'all' 
+                  ? `Generate All Tags (${availableClothItems.reduce((sum, item) => sum + item.quantity, 0)})` 
+                  : selectedClothItem !== 'all' 
+                    ? `Generate ${getClothDisplayName(selectedClothItem)} Tags (${items[selectedClothItem]?.quantity || 0})`
+                    : 'Select a Cloth Item'
+                }
               </button>
             </div>
           </div>
@@ -629,9 +863,12 @@ const Tags = () => {
                   ))}
                 </>
               ) : (
-                <p style={{ color: 'var(--gray-500)' }}>
-                  Select an order and click "Generate Tag"
-                </p>
+                <div style={{ color: 'var(--gray-500)', textAlign: 'center' }}>
+                  <p style={{ marginBottom: '0.5rem' }}>Select an order and click "Generate Tag"</p>
+                  <p style={{ fontSize: '0.875rem' }}>
+                    You can generate tags for all items or specific cloth items
+                  </p>
+                </div>
               )}
             </div>
 
@@ -647,10 +884,11 @@ const Tags = () => {
                 border: 'none',
                 cursor: tagPreview.length ? 'pointer' : 'not-allowed',
                 fontSize: '0.875rem',
-                marginTop: '1rem'
+                marginTop: '1rem',
+                fontWeight: 600
               }}
             >
-              Print Tag
+              🖨️ Print {tagPreview.length} Tag{tagPreview.length !== 1 ? 's' : ''}
             </button>
           </div>
         </div>

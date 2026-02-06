@@ -153,7 +153,7 @@ function AppContent({ encryptionKey }) {
             <Route path="/customers" element={<Customers />} />
             <Route path="/billing" element={<Billing />} />
             <Route path="/settings" element={<Settings />} />
-            
+
             {/* Catch-all redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

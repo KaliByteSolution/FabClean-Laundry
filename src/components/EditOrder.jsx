@@ -29,7 +29,7 @@ const EditOrder = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
-  
+
   // Configuration states
   const [servicePrices, setServicePrices] = useState({});
   const [availableServices, setAvailableServices] = useState([]);
@@ -42,7 +42,7 @@ const EditOrder = () => {
 
   const imageMap = {
     shirt, tshirt, pant, starch, saree: sareeimg, blouse, panjabi: punjabi,
-    dhotar, shalu, coat, shervani: sherwani, sweater, onepiece, 
+    dhotar, shalu, coat, shervani: sherwani, sweater, onepiece,
     bedsheet: sbed, blanket: dbed, shoes, helmet, clothsPerKg: clothsperkg
   };
 
@@ -71,7 +71,7 @@ const EditOrder = () => {
 
   useEffect(() => {
     fetchConfiguration();
-    fetchPendingOrders();
+    fetchInProgressOrders();
   }, []);
 
   const fetchConfiguration = async () => {
@@ -179,24 +179,24 @@ const EditOrder = () => {
     if (item.iconUrl && item.iconUrl.trim() !== '') {
       return item.iconUrl;
     }
-    
+
     if (item.icon && imageMap[item.icon]) {
       return imageMap[item.icon];
     }
-    
+
     if (imageMap[item.id]) {
       return imageMap[item.id];
     }
-    
+
     return defaultIcon;
   };
 
-  const fetchPendingOrders = async () => {
+  const fetchInProgressOrders = async () => {
     setLoading(true);
     try {
       const bookingsRef = collection(db, 'Bookings');
       const querySnapshot = await getDocs(bookingsRef);
-      
+
       const allOrders = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
@@ -207,20 +207,20 @@ const EditOrder = () => {
         };
       });
 
-      const pendingOrdersList = allOrders
+      const inProgressOrdersList = allOrders
         .filter(order => {
           const status = order.status?.toLowerCase() || '';
-          return status === 'pending';
+          return status === 'in-progress';
         })
         .sort((a, b) => {
           const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
           const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
           return dateB - dateA;
         });
-      
-      setPendingOrders(pendingOrdersList);
-      console.log(`Fetched ${pendingOrdersList.length} pending orders`);
-      
+
+      setPendingOrders(inProgressOrdersList);
+      console.log(`Fetched ${inProgressOrdersList.length} in-progress orders`);
+
     } catch (error) {
       console.error('Error fetching orders:', error);
       alert('Failed to fetch orders: ' + error.message);
@@ -234,7 +234,7 @@ const EditOrder = () => {
   const calculateTotals = (items) => {
     let totalItems = 0;
     let totalCost = 0;
-    
+
     Object.values(items).forEach(item => {
       totalItems += item.quantity || 0;
       totalCost += (item.quantity || 0) * (item.price || 0);
@@ -280,9 +280,9 @@ const EditOrder = () => {
         };
         return acc;
       }, {});
-      
+
       const totals = calculateTotals(updatedItems);
-      
+
       setEditedOrder(prev => ({
         ...prev,
         items: updatedItems,
@@ -293,7 +293,7 @@ const EditOrder = () => {
 
   const handleItemChange = (itemName, field, value) => {
     const numValue = field === 'quantity' || field === 'price' ? Number(value) || 0 : value;
-    
+
     setEditedOrder(prev => {
       const updatedItems = {
         ...prev.items,
@@ -302,9 +302,9 @@ const EditOrder = () => {
           [field]: numValue
         }
       };
-      
+
       const totals = calculateTotals(updatedItems);
-      
+
       return {
         ...prev,
         items: updatedItems,
@@ -320,7 +320,7 @@ const EditOrder = () => {
   const handleSelectItemToAdd = (itemId) => {
     const currentServiceType = editedOrder.serviceType;
     const itemPrice = servicePrices[currentServiceType]?.[itemId] || 0;
-    
+
     const updatedItems = {
       ...editedOrder.items,
       [itemId]: {
@@ -343,9 +343,9 @@ const EditOrder = () => {
   const handleRemoveItem = (itemName) => {
     setEditedOrder(prev => {
       const { [itemName]: removed, ...remainingItems } = prev.items;
-      
+
       const totals = calculateTotals(remainingItems);
-      
+
       return {
         ...prev,
         items: remainingItems,
@@ -364,14 +364,14 @@ const EditOrder = () => {
       alert('Service type is required!');
       return;
     }
-    
+
     setSaving(true);
     try {
       const orderRef = doc(db, 'Bookings', selectedOrder.id);
-      
+
       // Recalculate totals to ensure accuracy
       const totals = calculateTotals(editedOrder.items || {});
-      
+
       const updateData = {
         customerName: editedOrder.customerName,
         phone: editedOrder.phone,
@@ -389,34 +389,34 @@ const EditOrder = () => {
         cgst: parseFloat(totals.cgst.toFixed(2)),
         grandTotal: parseFloat(totals.grandTotal.toFixed(2)),
         lastModified: Timestamp.now(),
-        status: 'pending',
+        status: 'in-progress',
         urgentDelivery: editedOrder.urgentDelivery || false
       };
-      
+
       await updateDoc(orderRef, updateData);
-      
-      setPendingOrders(prev => 
-        prev.map(order => 
-          order.id === selectedOrder.id 
-            ? { 
-                ...editedOrder, 
-                totalItems: totals.totalItems,
-                totalCost: parseFloat(totals.totalCost.toFixed(2)),
-                sgst: parseFloat(totals.sgst.toFixed(2)),
-                cgst: parseFloat(totals.cgst.toFixed(2)),
-                grandTotal: parseFloat(totals.grandTotal.toFixed(2)),
-                id: selectedOrder.id, 
-                lastModified: new Date() 
-              } 
+
+      setPendingOrders(prev =>
+        prev.map(order =>
+          order.id === selectedOrder.id
+            ? {
+              ...editedOrder,
+              totalItems: totals.totalItems,
+              totalCost: parseFloat(totals.totalCost.toFixed(2)),
+              sgst: parseFloat(totals.sgst.toFixed(2)),
+              cgst: parseFloat(totals.cgst.toFixed(2)),
+              grandTotal: parseFloat(totals.grandTotal.toFixed(2)),
+              id: selectedOrder.id,
+              lastModified: new Date()
+            }
             : order
         )
       );
-      
+
       setShowEditModal(false);
       alert('Order updated successfully!');
-      
-      await fetchPendingOrders();
-      
+
+      await fetchInProgressOrders();
+
     } catch (error) {
       console.error('Error updating order:', error);
       alert('Failed to update order. Please try again.\nError: ' + error.message);
@@ -442,8 +442,8 @@ const EditOrder = () => {
 
   if (loading) {
     return (
-      <div style={{ 
-        padding: '2rem', 
+      <div style={{
+        padding: '2rem',
         textAlign: 'center',
         display: 'flex',
         flexDirection: 'column',
@@ -460,7 +460,7 @@ const EditOrder = () => {
           animation: 'spin 1s linear infinite'
         }}></div>
         <h3 style={{ marginTop: '1rem', color: 'var(--gray-600)' }}>
-          Loading pending orders...
+          Loading in-progress orders...
         </h3>
         <style>
           {`
@@ -486,9 +486,9 @@ const EditOrder = () => {
           padding: '1.5rem',
           borderBottom: '1px solid var(--gray-200)'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '1rem',
             flexWrap: 'wrap',
@@ -499,20 +499,20 @@ const EditOrder = () => {
               fontWeight: '600',
               color: 'var(--gray-800)'
             }}>
-              Edit Pending Orders
+              Edit In-Progress Orders
             </h3>
             <span style={{
-              backgroundColor: '#ffc107',
-              color: '#000',
+              backgroundColor: '#2196f3',
+              color: '#fff',
               padding: '0.25rem 0.75rem',
               borderRadius: '1rem',
               fontSize: '0.875rem',
               fontWeight: '500'
             }}>
-              {filteredOrders.length} Pending Orders
+              {filteredOrders.length} In-Progress Orders
             </span>
           </div>
-          
+
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               type="text"
@@ -530,7 +530,7 @@ const EditOrder = () => {
               }}
             />
             <button
-              onClick={fetchPendingOrders}
+              onClick={fetchInProgressOrders}
               disabled={loading}
               style={{
                 padding: '0.5rem 1rem',
@@ -569,16 +569,16 @@ const EditOrder = () => {
             <tbody>
               {filteredOrders.length > 0 ? (
                 filteredOrders.map(order => (
-                  <tr key={order.id} style={{ 
+                  <tr key={order.id} style={{
                     transition: 'background-color 0.2s',
                     cursor: 'pointer',
                     backgroundColor: order.urgentDelivery ? '#fff3e0' : 'transparent'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = order.urgentDelivery ? '#ffe0b2' : 'var(--gray-50)'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = order.urgentDelivery ? '#fff3e0' : 'transparent'}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = order.urgentDelivery ? '#ffe0b2' : 'var(--gray-50)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = order.urgentDelivery ? '#fff3e0' : 'transparent'}
                   >
                     <td style={styles.td}>
-                      <span style={{ 
+                      <span style={{
                         fontWeight: '500',
                         color: 'var(--primary)'
                       }}>
@@ -648,15 +648,15 @@ const EditOrder = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" style={{ 
-                    ...styles.td, 
+                  <td colSpan="9" style={{
+                    ...styles.td,
                     textAlign: 'center',
                     padding: '2rem',
                     color: 'var(--gray-500)'
                   }}>
-                    {searchTerm 
-                      ? `No pending orders found matching "${searchTerm}"`
-                      : 'No pending orders found'}
+                    {searchTerm
+                      ? `No in-progress orders found matching "${searchTerm}"`
+                      : 'No in-progress orders found'}
                   </td>
                 </tr>
               )}
@@ -672,13 +672,13 @@ const EditOrder = () => {
             <div style={styles.modalHeader}>
               <div>
                 <h3 style={{ margin: 0 }}>Edit Order - {selectedOrder.id}</h3>
-                <p style={{ 
-                  margin: '0.25rem 0 0 0', 
-                  fontSize: '0.875rem', 
-                  color: 'var(--gray-500)' 
+                <p style={{
+                  margin: '0.25rem 0 0 0',
+                  fontSize: '0.875rem',
+                  color: 'var(--gray-500)'
                 }}>
-                  Last modified: {editedOrder.lastModified 
-                    ? new Date(editedOrder.lastModified).toLocaleString() 
+                  Last modified: {editedOrder.lastModified
+                    ? new Date(editedOrder.lastModified).toLocaleString()
                     : 'Never'}
                 </p>
               </div>
@@ -774,9 +774,9 @@ const EditOrder = () => {
                 </div>
               </div>
 
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginTop: '1.5rem',
                 marginBottom: '1rem'
@@ -798,7 +798,7 @@ const EditOrder = () => {
                   + Add Item
                 </button>
               </div>
-              
+
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -864,15 +864,15 @@ const EditOrder = () => {
                   </tbody>
                   <tfoot>
                     <tr style={{ backgroundColor: 'var(--gray-50)' }}>
-                      <td colSpan="3" style={{ 
-                        ...styles.td, 
-                        textAlign: 'right', 
+                      <td colSpan="3" style={{
+                        ...styles.td,
+                        textAlign: 'right',
                         fontWeight: '500'
                       }}>
                         Subtotal:
                       </td>
-                      <td colSpan="2" style={{ 
-                        ...styles.td, 
+                      <td colSpan="2" style={{
+                        ...styles.td,
                         fontWeight: 'bold'
                       }}>
                         ₹{parseFloat(editedOrder.totalCost || 0).toFixed(2)}
@@ -881,8 +881,8 @@ const EditOrder = () => {
                     {gstConfig.enabled && (
                       <>
                         <tr>
-                          <td colSpan="3" style={{ 
-                            ...styles.td, 
+                          <td colSpan="3" style={{
+                            ...styles.td,
                             textAlign: 'right',
                             fontSize: '0.875rem'
                           }}>
@@ -893,8 +893,8 @@ const EditOrder = () => {
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan="3" style={{ 
-                            ...styles.td, 
+                          <td colSpan="3" style={{
+                            ...styles.td,
                             textAlign: 'right',
                             fontSize: '0.875rem'
                           }}>
@@ -907,16 +907,16 @@ const EditOrder = () => {
                       </>
                     )}
                     <tr style={{ backgroundColor: 'var(--primary-light, #e3f2fd)' }}>
-                      <td colSpan="3" style={{ 
-                        ...styles.td, 
-                        textAlign: 'right', 
+                      <td colSpan="3" style={{
+                        ...styles.td,
+                        textAlign: 'right',
                         fontWeight: 'bold',
                         fontSize: '1rem'
                       }}>
                         Grand Total:
                       </td>
-                      <td colSpan="2" style={{ 
-                        ...styles.td, 
+                      <td colSpan="2" style={{
+                        ...styles.td,
                         fontWeight: 'bold',
                         fontSize: '1.125rem',
                         color: 'var(--primary)'
@@ -979,7 +979,7 @@ const EditOrder = () => {
                 ×
               </button>
             </div>
-            
+
             <div style={styles.modalBody}>
               {availableItemsToAdd.length > 0 ? (
                 <div style={{
@@ -1009,10 +1009,10 @@ const EditOrder = () => {
                         e.currentTarget.style.backgroundColor = 'white';
                       }}
                     >
-                      <img 
+                      <img
                         src={getClothIcon(item)}
-                        alt={item.name} 
-                        style={{ width: '60px', height: '60px', objectFit: 'contain', marginBottom: '0.5rem' }} 
+                        alt={item.name}
+                        style={{ width: '60px', height: '60px', objectFit: 'contain', marginBottom: '0.5rem' }}
                       />
                       <p style={{ fontSize: '0.875rem', fontWeight: '500', margin: '0.25rem 0' }}>
                         {item.name}
