@@ -322,16 +322,16 @@ const Billing = () => {
             fontWeight: 'bold',
             color: '#3B82F6',
             marginBottom: '0.3rem'
-          }}>{companySettings.businessName || 'Wash & Joy'}</h2>
+          }}>{companySettings.businessName}</h2>
           <p style={{ color: '#6B7280', marginBottom: '0.20rem' }}>Laundry & Dry Cleaning Service</p>
           <p style={{ color: '#6B7280', marginBottom: '0.20rem', lineHeight: '1.2' }}>
-            {companySettings.address || 'Soma Niwas, Ramnagar Bus Stop, Rahatani Main Road, Rahatani Gav, Pune - 411017'}
+            {companySettings.address}
           </p>
           {companySettings.gstin && (
             <p style={{ color: '#6B7280', marginBottom: '0.20rem' }}>GSTIN: {companySettings.gstin}</p>
           )}
           <p style={{ color: '#6B7280', margin: 0 }}>
-            ☎ {companySettings.phoneNumber || '+91 8421586414'}
+            ☎ {companySettings.phoneNumber}
           </p>
         </div>
         
@@ -419,7 +419,7 @@ const Billing = () => {
         }}>
           <p>Collect your clothes within one week. After that, we are not responsible for any loss.</p>
           <p style={{ marginTop: '1rem' }}>Store Hours: Thursday Closed</p>
-          <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>Wash & Joy</p>
+          <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>{companySettings.businessName}</p>
           <p style={{ marginTop: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>Signature: __________________</p>
         </div>
       </div>
